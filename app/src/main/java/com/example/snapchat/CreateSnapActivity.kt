@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
+import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
@@ -15,8 +16,10 @@ import android.view.View
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.Toast
+import com.google.android.gms.tasks.Continuation
 import com.google.android.gms.tasks.OnFailureListener
 import com.google.android.gms.tasks.OnSuccessListener
+import com.google.android.gms.tasks.Task
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.UploadTask
 
@@ -42,7 +45,7 @@ class CreateSnapActivity : AppCompatActivity() {
         startActivityForResult(intent, 1)
     }
 
-    fun chooseImageClicked(view: View){
+    fun chooseImageClicked(view: View) {
 
         if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) !== PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), 1)
@@ -66,7 +69,6 @@ class CreateSnapActivity : AppCompatActivity() {
                 createSnapImageView?.setImageBitmap(bitmap)
 
 
-
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -74,7 +76,7 @@ class CreateSnapActivity : AppCompatActivity() {
         }
     }
 
-    override  fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>,  grantResults: IntArray) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
         if (requestCode == 1) {
@@ -86,31 +88,68 @@ class CreateSnapActivity : AppCompatActivity() {
 
     fun nextClicked(view: View) {
         // Get the data from an ImageView as bytes
-        createSnapImageView?.setDrawingCacheEnabled(true)
+        createSnapImageView?.isDrawingCacheEnabled = true
         createSnapImageView?.buildDrawingCache()
-        val bitmap = (createSnapImageView?.getDrawable() as BitmapDrawable).bitmap
+        val bitmap = (createSnapImageView?.drawable as BitmapDrawable).bitmap
         val baos = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos)
+        bitmap?.compress(Bitmap.CompressFormat.JPEG, 100, baos)
         val data = baos.toByteArray()
-        val imageName = UUID.randomUUID().toString() + ".jpg"
 
-        val uploadTask = FirebaseStorage.getInstance().reference.child("images")
-            .child(imageName).putBytes(data)
-        uploadTask.addOnFailureListener(OnFailureListener {
+        var downloadUrl: String? =
+            null//FirebaseStorage.getInstance().getReference().child("images").child(imageName).downloadUrl.toString()
+
+
+        var uploadTask = FirebaseStorage.getInstance().getReference().child("images").child(imageName).putBytes(data)
+
+        uploadTask.addOnFailureListener {
             // Handle unsuccessful uploads
-            Toast.makeText(this, "Upload failed.", Toast.LENGTH_SHORT).show()
-        }).addOnSuccessListener(OnSuccessListener<UploadTask.TaskSnapshot> { taskSnapshot ->
-            // taskSnapshot.getMetadata() contains file metadata such as size, content-type, etc.
-            //val downloadUrl = taskSnapshot.metadata!!.path
-            var downloadUrl = FirebaseStorage.getInstance().reference.child("images")
-                .child(imageName).downloadUrl.toString()
-            Log.i("URL", downloadUrl)
+            Toast.makeText(this, "Upload Unsuccessful :(", Toast.LENGTH_SHORT).show()
+        }.addOnSuccessListener {
+            // taskSnapshot.metadata contains file metadata such as size, content-type, etc.
+            // ...
 
-            val intent = Intent(this, ChooseUserActivity::class.java)
-            intent.putExtra("imageURL", downloadUrl.toString())
-            intent.putExtra("imageName", imageName)
-            intent.putExtra("message", messageEditText?.text.toString())
-            startActivity(intent)
-        })
+            downloadUrl = uploadTask.snapshot.storage.downloadUrl.toString()
+            Log.i("Snapchat Shubham  url : ", downloadUrl)
+            /*FirebaseStorage.getInstance().getReference().child("images").child(imageName).downloadUrl.addOnSuccessListener {
+                downloadUrl = it.toString()
+                Log.i("Geetting url","passed")
+            }.addOnFailureListener{
+                Log.i("Geetting url","failed")
+            }*/
+            /**/
+            Toast.makeText(this, "Upload Successful :)", Toast.LENGTH_SHORT).show()
+
+
+            val urlTask = uploadTask.continueWithTask(Continuation<UploadTask.TaskSnapshot, Task<Uri>> { task ->
+                if (!task.isSuccessful) {
+                    task.exception?.let {
+                        throw  it
+                    }
+                }
+                return@Continuation FirebaseStorage.getInstance().getReference().child("images").child(imageName)
+                    .downloadUrl
+            }).addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val downloadUri = task.result
+                    downloadUrl = downloadUri.toString()
+                    Log.i("Geetting url", "passed : " + downloadUrl)
+                    val intent = Intent(this, ChooseUserActivity::class.java)
+                    Log.i("imageUrl", downloadUrl)
+                    intent.putExtra("imageUrl", downloadUrl)
+                    intent.putExtra("imageName", imageName)
+                    intent.putExtra("message", messageEditText?.text.toString())
+                    startActivity(intent)
+
+                } else {
+                    Log.i("Geetting url", "failed")
+                    Toast.makeText(this, "Something went wrong :(", Toast.LENGTH_SHORT).show()
+                    val intent = Intent(this, SnapsActivity::class.java)
+                    startActivity(intent)
+                }
+            }
+
+
+        }
+
     }
 }

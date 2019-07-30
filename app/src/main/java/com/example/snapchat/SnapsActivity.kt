@@ -16,16 +16,16 @@ import com.google.firebase.database.FirebaseDatabase
 
 class SnapsActivity : AppCompatActivity() {
 
-    var mAuth = FirebaseAuth.getInstance()
+    val mAuth = FirebaseAuth.getInstance()
 
     var snapsListView: ListView? = null
     val emails: ArrayList<String> = ArrayList()
     var snaps: ArrayList<DataSnapshot> = ArrayList()
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_snaps)
-
 
         snapsListView = findViewById(R.id.snapsListView)
         val adapter: ArrayAdapter<String> = ArrayAdapter(this,
@@ -64,37 +64,29 @@ class SnapsActivity : AppCompatActivity() {
                 intent.putExtra("snapKey", snapshot.key)
                 startActivity(intent)
             }
-
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-
         val inflater = menuInflater
-        inflater.inflate(R.menu.snaps,menu)
+        inflater.inflate(R.menu.snaps, menu)
 
         return super.onCreateOptionsMenu(menu)
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-
-        if(item?.itemId == R.id.createSnap){
-
-            val intent = Intent(this,CreateSnapActivity::class.java)
-
+    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
+        if (item?.itemId == R.id.createSnap) {
+            val intent = Intent(this, CreateSnapActivity::class.java)
             startActivity(intent)
-
-        }else if(item?.itemId == R.id.logout){
-
+        } else if (item?.itemId == R.id.logout) {
             mAuth.signOut()
             finish()
-
         }
+
         return super.onOptionsItemSelected(item)
     }
 
     override fun onBackPressed() {
         super.onBackPressed()
-
         mAuth.signOut()
     }
 }
