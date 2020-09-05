@@ -4,6 +4,6 @@ This is clone of very famous application known as Snapchat.This app uses most of
 ## Platform Used
 Android Studio
 
-##Programming Language used
+## Programming Language used
 Kotlin
 
